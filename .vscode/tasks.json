@@ -1,0 +1,69 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		
+
+		{
+			"type": "cppbuild",
+			//"label": "C/C++: gcc.exe build active file 32bit",
+			"label": "Win32_task_rel",
+			"command": "C:\\programs\\tdm-gcc\\10-3-0\\bin\\gcc.exe",
+			//"command": "C:\\TDM-GCC-64\\bin\\gcc.exe",
+			"args": [
+				"-O2",
+				"-m32",
+				"-pedantic",
+				//"${file}",
+				"tcp_server.c",
+				"-lws2_32",
+				"-m32",
+				"-o",
+				//"${fileDirname}\\32bit\\${fileBasenameNoExtension}.exe"
+				"${workspaceFolder}\\tcp_server_rel.exe"
+				//"${fileDirname}\\newpos.exe"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build",
+			"detail": "C:\\programs\\tdm-gcc\\10-3-0\\bin\\gcc.exe"
+			//"detail": "C:\\TDM-GCC-64\\bin\\gcc.exe"
+		},
+
+
+
+		{
+			"type": "cppbuild",
+			//"label": "C/C++: gcc.exe build active file 32bit",
+			"label": "Win32_task_dbg",
+			"command": "C:\\programs\\tdm-gcc\\10-3-0\\bin\\gcc.exe",
+			//"command": "C:\\TDM-GCC-64\\bin\\gcc.exe",
+			"args": [
+				"-g",
+				"-m32",
+				"-pedantic",
+				//"${file}",
+				"tcp_server.c",
+				"-lws2_32",
+				"-m32",
+				"-o",
+				//"${fileDirname}\\32bit\\${fileBasenameNoExtension}.exe"
+				"${workspaceFolder}\\tcp_server_dbg.exe"
+				//"${fileDirname}\\newpos.exe"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build",
+			"detail": "C:\\programs\\tdm-gcc\\10-3-0\\bin\\gcc.exe"
+			//"detail": "C:\\TDM-GCC-64\\bin\\gcc.exe"
+		}
+
+	]
+}
