@@ -38,7 +38,6 @@ int main(int argc, char *argv[])
     struct addrinfo *result = NULL;
     struct addrinfo hints;
 
-    int iSendResult;
     char recvbuf[DEFAULT_BUFLEN];
     int recvbuflen = DEFAULT_BUFLEN;
 	int wasParamError = 0;
@@ -71,10 +70,13 @@ int main(int argc, char *argv[])
 		
 	}
 	if (argc == 1 || wasParamError){
-		printf("*** usage: %s -ms/-mm(mode:swallow(dflt.)/mirror) -p=%d(listen port)\n", argv[0], port);
+		printf("*** usage: %s -ms/-mm(mode:swallow/mirror) -p=%d(listen port)\n", argv[0], port);
+		if (wasParamError){
+			return 1;
+		}
 	}
 
-	printf("*** simple TCP server! Setup -> mode=%s, port=%d\n", mode == m_swallow ? "swallow" : "mirror", port);
+	printf("*** simple non-MT TCP server! Setup -> mode=%s, port=%d (ESC to exit)\n", mode == m_swallow ? "swallow" : "mirror", port);
 
     // Initialize Winsock
     iResult = WSAStartup(MAKEWORD(2,2), &wsaData);
@@ -102,6 +104,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
+/*
 	//testing result
 	{
 		struct addrinfo *next = result;
@@ -118,7 +121,7 @@ int main(int argc, char *argv[])
 			next = next->ai_next;
 		}
 	}
-
+*/
     // Create a SOCKET for connecting to server
     ListenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
     if (ListenSocket == INVALID_SOCKET) {
@@ -127,6 +130,26 @@ int main(int argc, char *argv[])
         WSACleanup();
         return 1;
     }
+
+    freeaddrinfo(result);
+
+	//-------------------------
+	// Set the socket I/O mode: In this case FIONBIO
+	// enables or disables the blocking mode for the 
+	// socket based on the numerical value of iMode.
+	// If iMode = 0, blocking is enabled; 
+	// If iMode != 0, non-blocking mode is enabled.
+	{
+		u_long iMode = 1;
+		iResult = ioctlsocket(ListenSocket, FIONBIO, &iMode);
+		if (iResult != NO_ERROR){
+			printf("ioctlsocket failed with error: %ld\n", iResult);
+	        freeaddrinfo(result);
+        	WSACleanup();
+        	return 1;
+		}
+	}
+  
 
     // Setup the TCP listening socket
     iResult = bind( ListenSocket, result->ai_addr, (int)result->ai_addrlen);
@@ -138,7 +161,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    freeaddrinfo(result);
+	freeaddrinfo(result);
 
     iResult = listen(ListenSocket, SOMAXCONN);
     if (iResult == SOCKET_ERROR) {
@@ -148,46 +171,26 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-	//set ListenSocket to blocking only 1 millisecond
-	{
-		struct timeval tv;
-		tv.tv_sec = 1;
-		tv.tv_usec = 0;	//1000
-		FD_ZERO(&ReadSet);
-		FD_SET(ListenSocket, &ReadSet);
-		iResult = select(0, &ReadSet, NULL, NULL, &tv);
-	}
-
 	printf("entering cycle\n");
 
     // Receive until the peer shuts down the connection
 	fflush(stdin);
     do {
-		printf("wait 1 sec...\n");
-		Sleep(1000);
-		if (FD_ISSET(ListenSocket, &ReadSet)){
-			printf("FD_ISSET\n");
-			// Accept a client socket
-			ClientSocket = accept(ListenSocket, NULL, NULL);	//waits here 1 milliseconds
-			if (ClientSocket == INVALID_SOCKET) {
-				printf("accept failed with error: %d\n", WSAGetLastError());
-				closesocket(ListenSocket);
-				WSACleanup();
-				return 1;
-			}
-
+		ClientSocket = INVALID_SOCKET;
+		Sleep(100);	//to have some free time to CPU
+		if ((ClientSocket = accept(ListenSocket, NULL, NULL)) != INVALID_SOCKET){	//non-blocking accept
+			printf("incoming\n");
 			iResult = recv(ClientSocket, recvbuf, recvbuflen, 0);
 			if (iResult > 0) {
 				printf("Bytes received: %d\n", iResult);
 
 				if (mode == m_mirror){
+					int iSendResult;
 					// Echo the buffer back to the sender
 					iSendResult = send( ClientSocket, recvbuf, iResult, 0 );
 					if (iSendResult == SOCKET_ERROR) {
 						printf("send failed with error: %d\n", WSAGetLastError());
-						closesocket(ClientSocket);
-						WSACleanup();
-						return 1;
+						break;
 					}
 					printf("Bytes sent: %d\n", iSendResult);
 				}
@@ -196,38 +199,35 @@ int main(int argc, char *argv[])
 				printf("Connection closing...\n");
 			else  {
 				printf("recv failed with error: %d\n", WSAGetLastError());
-				closesocket(ClientSocket);
-				WSACleanup();
-				return 1;
+				break;
 			}
 
 			// shutdown the connection since we're done
 			iResult = shutdown(ClientSocket, SD_SEND);
 			if (iResult == SOCKET_ERROR) {
-				printf("shutdown failed with error: %d\n", WSAGetLastError());
-				closesocket(ClientSocket);
-				WSACleanup();
-				return 1;
+				printf("shutdown #1 failed with error: %d\n", WSAGetLastError());
+				break;
 			}
 			//close client socket
 			closesocket(ClientSocket);
-
 			
 		}
 
     } while ( !(_kbhit() && _getch() == 27) /*iResult > 0*/);
 
-    // shutdown the connection since we're done
-    iResult = shutdown(ClientSocket, SD_SEND);
-    if (iResult == SOCKET_ERROR) {
-        printf("shutdown failed with error: %d\n", WSAGetLastError());
-        closesocket(ClientSocket);
-        WSACleanup();
-        return 1;
-    }
+	// cleanup
+	if (ClientSocket != INVALID_SOCKET && ClientSocket != 0){
+		iResult = shutdown(ClientSocket, SD_SEND);
+		if (iResult == SOCKET_ERROR) {
+			printf("shutdown #2 failed with error: %d\n", WSAGetLastError());
+			closesocket(ClientSocket);
+			WSACleanup();
+			return 1;
+		}
 
-    // cleanup
-	closesocket(ClientSocket);
+		closesocket(ClientSocket);
+	}
+
     closesocket(ListenSocket);
 	WSACleanup();
 
