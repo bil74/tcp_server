@@ -220,9 +220,6 @@ int main(int argc, char *argv[])
 		iResult = shutdown(ClientSocket, SD_SEND);
 		if (iResult == SOCKET_ERROR) {
 			printf("shutdown #2 failed with error: %d\n", WSAGetLastError());
-			closesocket(ClientSocket);
-			WSACleanup();
-			return 1;
 		}
 
 		closesocket(ClientSocket);
