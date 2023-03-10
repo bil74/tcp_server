@@ -175,14 +175,17 @@ int main(int argc, char *argv[])
 
     // Receive until the peer shuts down the connection
 	fflush(stdin);
+	long long counter = 0;
     do {
 		ClientSocket = INVALID_SOCKET;
 		Sleep(100);	//to have some free time to CPU
 		if ((ClientSocket = accept(ListenSocket, NULL, NULL)) != INVALID_SOCKET){	//non-blocking accept
-			printf("incoming\n");
+			//printf("incoming\n");
 			iResult = recv(ClientSocket, recvbuf, recvbuflen, 0);
 			if (iResult > 0) {
-				printf("Bytes received: %d\n", iResult);
+				printf("----- message #%lld\n", ++counter);
+				recvbuf[iResult] = '\0';
+				printf("Received(%d): %s\n", iResult, recvbuf);
 
 				if (mode == m_mirror){
 					int iSendResult;
@@ -192,7 +195,7 @@ int main(int argc, char *argv[])
 						printf("send failed with error: %d\n", WSAGetLastError());
 						break;
 					}
-					printf("Bytes sent: %d\n", iSendResult);
+					printf("Sent(%d): %s\n", iSendResult, recvbuf);
 				}
 			}
 			else if (iResult == 0)
@@ -210,6 +213,7 @@ int main(int argc, char *argv[])
 			}
 			//close client socket
 			closesocket(ClientSocket);
+			printf("\n");
 			
 		}
 
